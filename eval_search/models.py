@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 
 class TopicCategory(str, Enum):
+    AI = "ai"
     TECHNOLOGY = "technology"
     FINANCE = "finance"
     ENTERTAINMENT = "entertainment"

@@ -3,6 +3,18 @@
 <!-- Format: ## Topic Name followed by bullet list of queries, one per line. -->
 <!-- This file is the source of truth for the query bank. Edit here and save from the UI. -->
 
+## Ai
+- new AI foundation model release announced
+- OpenAI Anthropic Google DeepMind Meta AI product update
+- multimodal AI model image video audio launch
+- Nvidia GPU chip AI hardware announcement
+- LLM research paper benchmark reasoning capabilities
+- AI agent autonomous workflow product launch
+- agentic AI research autonomous systems planning
+- open source AI model weights release
+- AI safety alignment policy regulation news
+- AI infrastructure compute data center investment
+
 ## Technology
 - AI model releases this week
 - latest smartphone announcements
