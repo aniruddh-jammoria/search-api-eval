@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search Provider Evaluation — {{ run.timestamp.strftime('%Y-%m-%d') }}</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f6fa; color: #2d3436; line-height: 1.6; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+  h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; }
+  h2 { font-size: 1.25rem; font-weight: 600; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #dfe6e9; }
+  h3 { font-size: 1rem; font-weight: 600; margin: 20px 0 8px; color: #636e72; }
+  .meta { color: #636e72; font-size: 0.85rem; margin-bottom: 24px; }
+  .meta span { margin-right: 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { background: #f1f2f6; text-align: left; padding: 8px 10px; font-weight: 600; white-space: nowrap; vertical-align: middle; }
+  td { padding: 7px 10px; border-bottom: 1px solid #f1f2f6; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8f9fa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+  .badge-green { background: #d5f5e3; color: #1e8449; }
+  .badge-warn  { background: #fef9e7; color: #b7950b; }
+  .badge-red   { background: #fdedec; color: #922b21; }
+  .badge-grey  { background: #eaecee; color: #626567; }
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:768px) { .chart-grid { grid-template-columns: 1fr; } }
+  .chart-box { background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .section-note { background: #fef9e7; border-left: 4px solid #f39c12; padding: 10px 14px; border-radius: 4px; font-size: 0.83rem; margin: 12px 0; }
+  /* Raw data table */
+  #search-box { width: 100%; padding: 8px 12px; margin-bottom: 12px; border: 1px solid #dfe6e9; border-radius: 6px; font-size: 0.85rem; }
+  #data-table { font-size: 0.78rem; }
+  #data-table th { cursor: pointer; user-select: none; }
+  #data-table th:hover { background: #dfe6e9; }
+  .no-wrap { white-space: nowrap; }
+  a { color: #2980b9; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { background: #f1f2f6; padding: 2px 6px; border-radius: 3px; font-size: 0.82rem; }
+  pre { background: #f1f2f6; padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 0.78rem; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <h1>Search Provider Evaluation</h1>
+  <div class="meta">
+    <span>Run ID: <code>{{ run.run_id[:8] }}</code></span>
+    <span>Generated: {{ generated_at.strftime('%Y-%m-%d %H:%M UTC') }}</span>
+    <span>Lookback: {{ run.lookback_days }} days</span>
+    <span>Topics: {{ run.topics | map(attribute='value') | join(', ') }}</span>
+    <span>Providers: {{ run.providers_tested | join(', ') }}</span>
+    <span>LLM Judges: {% for j in judges %}{{ j.name }} (<code>{{ j.model }}</code>){% if not loop.last %}, {% endif %}{% endfor %}</span>
+  </div>
+
+  <!-- ── 1. Executive Summary ───────────────────────────────── -->
+  <h2>1. Executive Summary</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2">Endpoint</th>
+          <th rowspan="2">% Within Window</th>
+          <th colspan="2" style="text-align:center;border-bottom:1px solid #dfe6e9;">Relevance</th>
+          <th colspan="2" style="text-align:center;border-bottom:1px solid #dfe6e9;">Newsworthiness</th>
+          <th colspan="3" style="text-align:center;border-bottom:1px solid #dfe6e9;">Cost</th>
+          <th rowspan="2">P50 Latency</th>
+        </tr>
+        <tr>
+          <th>Claude</th>
+          <th>OpenAI</th>
+          <th>Claude</th>
+          <th>OpenAI</th>
+          <th>Search</th>
+          <th>Summarization</th>
+          <th>Product</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in summary_rows %}
+        <tr>
+          <td class="no-wrap"><strong>{{ m.endpoint_id | replace('_',' ') }}</strong></td>
+          <td>{{ "%.0f%%"|format(m.pct_within_lookback * 100) }}</td>
+          <td>{{ "%.2f"|format(m.avg_relevance_claude) if m.avg_relevance_claude else "N/A" }}</td>
+          <td>{{ "%.2f"|format(m.avg_relevance_openai) if m.avg_relevance_openai else "N/A" }}</td>
+          <td>{{ "%.2f"|format(m.avg_newsworthiness_claude) if m.avg_newsworthiness_claude else "N/A" }}</td>
+          <td>{{ "%.2f"|format(m.avg_newsworthiness_openai) if m.avg_newsworthiness_openai else "N/A" }}</td>
+          <td>${{ "%.4f"|format(m.search_cost_usd) }}</td>
+          <td>${{ "%.4f"|format(m.summarization_cost_usd) }}</td>
+          <td>${{ "%.4f"|format(m.search_cost_usd + m.summarization_cost_usd) }}</td>
+          <td>{{ "%.0f"|format(m.p50_latency_ms) }}ms</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 2. Recency ─────────────────────────────────────────── -->
+  <h2>2. Recency</h2>
+  {% if 'tavily' in run.providers_tested %}
+  <div class="section-note">
+    Tavily does not return publication dates. All Tavily results have <code>recency_score = 0</code> and appear in the "Unknown" bucket.
+  </div>
+  {% endif %}
+  <div class="chart-grid">
+    <div class="chart-box">{{ charts.recency_stacked | safe }}</div>
+    <div class="chart-box">{{ charts.age_box | safe }}</div>
+  </div>
+
+  <!-- ── 3. Relevance & Newsworthiness ──────────────────────── -->
+  <h2>3. Relevance &amp; Newsworthiness</h2>
+  <h3>3a. Relevance</h3>
+  <div class="chart-grid">
+    <div class="chart-box">{{ charts.relevance_claude | safe }}</div>
+    <div class="chart-box">{{ charts.relevance_openai | safe }}</div>
+  </div>
+  <h3>3b. Newsworthiness</h3>
+  <div class="chart-grid">
+    <div class="chart-box">{{ charts.newsworthiness_claude | safe }}</div>
+    <div class="chart-box">{{ charts.newsworthiness_openai | safe }}</div>
+  </div>
+  <h3>3c. Judge agreement (relevance)</h3>
+  <div class="chart-box">{{ charts.judge_correlation | safe }}</div>
+  <div class="card" style="margin-top:12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Endpoint</th>
+          <th>Claude avg relevance</th>
+          <th>OpenAI avg relevance</th>
+          <th>Mean diff (Claude − OpenAI)</th>
+          <th>Pearson r</th>
+          <th>Claude avg newsworthiness</th>
+          <th>OpenAI avg newsworthiness</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in summary_rows %}
+        <tr>
+          <td>{{ m.endpoint_id | replace('_',' ') }}</td>
+          <td>{{ "%.2f"|format(m.avg_relevance_claude) if m.avg_relevance_claude else "—" }}</td>
+          <td>{{ "%.2f"|format(m.avg_relevance_openai) if m.avg_relevance_openai else "—" }}</td>
+          <td>
+            {% if m.avg_relevance_claude and m.avg_relevance_openai %}
+              {{ "%+.2f"|format(m.avg_relevance_claude - m.avg_relevance_openai) }}
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ "%.3f"|format(m.judge_relevance_correlation) if m.judge_relevance_correlation else "—" }}</td>
+          <td>{{ "%.2f"|format(m.avg_newsworthiness_claude) if m.avg_newsworthiness_claude else "—" }}</td>
+          <td>{{ "%.2f"|format(m.avg_newsworthiness_openai) if m.avg_newsworthiness_openai else "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 4. Cost ────────────────────────────────────────────── -->
+  <h2>4. Cost</h2>
+  <div class="chart-box">{{ charts.cost | safe }}</div>
+  <div class="card" style="margin-top:12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Endpoint</th>
+          <th>Cost per call (est.)</th>
+          <th>Search Cost</th>
+          <th>Summarization Cost <small style="font-weight:normal;color:#636e72;">(product)</small></th>
+          <th>Judge Cost <small style="font-weight:normal;color:#636e72;">(eval only)</small></th>
+          <th>Total Cost</th>
+          <th>Cost / relevant article</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in summary_rows %}
+        <tr>
+          <td>{{ m.endpoint_id | replace('_',' ') }}</td>
+          <td>{{ pricing.get(m.endpoint_id, '—') }}</td>
+          <td>${{ "%.5f"|format(m.search_cost_usd) }}</td>
+          <td>${{ "%.5f"|format(m.summarization_cost_usd) }}</td>
+          <td>${{ "%.5f"|format(m.judge_cost_usd) }}</td>
+          <td>${{ "%.5f"|format(m.total_cost_usd) }}</td>
+          <td>{{ "$%.5f"|format(m.cost_per_relevant_article) if m.cost_per_relevant_article else "N/A" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 5. Latency ─────────────────────────────────────────── -->
+  <h2>5. Latency</h2>
+  <div class="chart-box">{{ charts.latency | safe }}</div>
+
+  <!-- ── 6. Raw Data Explorer ───────────────────────────────── -->
+  <h2>6. Raw Data Explorer</h2>
+  <input id="search-box" type="text" placeholder="Filter by title, endpoint, topic...">
+  <div class="card" style="overflow-x:auto;">
+    <table id="data-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">Endpoint</th>
+          <th onclick="sortTable(1)">Topic</th>
+          <th onclick="sortTable(2)">Title</th>
+          <th onclick="sortTable(3)">Date</th>
+          <th onclick="sortTable(4)">Recency</th>
+          <th onclick="sortTable(5)">Rel (Claude)</th>
+          <th onclick="sortTable(6)">Rel (OpenAI)</th>
+          <th onclick="sortTable(7)">News (Claude)</th>
+          <th onclick="sortTable(8)">News (OpenAI)</th>
+          <th onclick="sortTable(9)">Summary</th>
+        </tr>
+      </thead>
+      <tbody id="data-body">
+        {% for row in raw_rows %}
+        <tr>
+          <td class="no-wrap">{{ row.endpoint_id | replace('_',' ') }}</td>
+          <td class="no-wrap">{{ row.topic }}</td>
+          <td><a href="{{ row.url }}" target="_blank" rel="noopener">{{ row.title[:80] }}{% if row.title|length > 80 %}…{% endif %}</a></td>
+          <td class="no-wrap">{{ row.date or "—" }}</td>
+          <td>{{ "%.2f"|format(row.recency_score) }}</td>
+          <td>{{ row.rel_claude or "—" }}</td>
+          <td>{{ row.rel_openai or "—" }}</td>
+          <td>{{ row.news_claude or "—" }}</td>
+          <td>{{ row.news_openai or "—" }}</td>
+          <td style="max-width:320px;white-space:normal;color:#636e72;font-size:0.75rem;">{{ row.summary[:300] }}{% if row.summary|length > 300 %}…{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 7. Methodology ─────────────────────────────────────── -->
+  <h2>7. Methodology</h2>
+  <div class="card">
+    <h3>LLM Judge Prompts</h3>
+    <h3>Relevance</h3>
+    <pre>{{ methodology.relevance_prompt }}</pre>
+    <h3 style="margin-top:12px;">Newsworthiness</h3>
+    <pre>{{ methodology.newsworthiness_prompt }}</pre>
+
+    <p style="margin-top:16px; font-size:0.8rem; color:#636e72;">
+      LLM judge scores are probabilistic. Both judges run at temperature=0 for reproducibility,
+      but scores may vary across API versions. Exa cost is exact (from API response);
+      all other costs are estimates based on published pricing tiers.
+    </p>
+  </div>
+
+</div>
+
+<script>
+// ── Filter ──────────────────────────────────────────────────────────────────
+document.getElementById('search-box').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#data-body tr').forEach(function(row) {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+// ── Sort ────────────────────────────────────────────────────────────────────
+let sortDir = {};
+function sortTable(col) {
+  const tbody = document.getElementById('data-body');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const asc = !sortDir[col];
+  sortDir = {};
+  sortDir[col] = asc;
+
+  rows.sort(function(a, b) {
+    const va = a.cells[col].textContent.trim();
+    const vb = b.cells[col].textContent.trim();
+    const na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
+    return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+  rows.forEach(function(r) { tbody.appendChild(r); });
+}
+</script>
+</body>
+</html>
