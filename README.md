@@ -6,7 +6,7 @@ Picking a search API for a content pipeline is harder than it looks. Different p
 
 It was built with newsletter generation in mind, but the evaluation criteria — recency, relevance, newsworthiness, and cost — apply to most content pipelines.
 
-A sample report is available in [`sample_reports/`](sample_reports/) so you can see what the output looks like before running your own eval.
+A [sample report](https://aniruddh-jammoria.github.io/search-api-eval/sample_reports/exa_auto_native_vs_brave_news_ai_topic.html) is available so you can see what the output looks like before running your own eval.
 
 ## How it works
 
