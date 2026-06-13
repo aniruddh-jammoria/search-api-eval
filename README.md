@@ -1,8 +1,8 @@
-# eval-search
+# search-api-eval
 
 Picking a search API for a content pipeline is harder than it looks. Different providers return very different results — in freshness, relevance, and cost — and those differences compound when you're running queries across multiple topics every day.
 
-**eval-search** is a benchmarking framework that runs the same queries across multiple search providers, scores the results using two independent LLM judges (Claude and GPT-4o-mini), and produces a self-contained HTML report so you can compare providers on the metrics that actually matter for your use case.
+**search-api-eval** is a benchmarking framework that runs the same queries across multiple search providers, scores the results using two independent LLM judges (Claude and GPT-4o-mini), and produces a self-contained HTML report so you can compare providers on the metrics that actually matter for your use case.
 
 It was built with newsletter generation in mind, but the evaluation criteria — recency, relevance, newsworthiness, and cost — apply to most content pipelines.
 
@@ -227,4 +227,4 @@ eval-search is designed to be adapted. Here's where to make changes:
 
 ## Feedback
 
-If you run into a bug, have a question, or want to suggest a provider or feature, please [open an issue](https://github.com/aniruddh-jammoria/eval-search/issues). Contributions are welcome.
+If you run into a bug, have a question, or want to suggest a provider or feature, please [open an issue](https://github.com/aniruddh-jammoria/search-api-eval/issues). Contributions are welcome.
