@@ -97,6 +97,14 @@
     </table>
   </div>
 
+  <!-- ── Recommendation ───────────────────────────────────── -->
+  {% if recommendation %}
+  <div class="card" style="border-left: 4px solid #2ecc71; margin-top: 8px;">
+    <h3 style="margin: 0 0 8px; color: #27ae60; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Recommendation</h3>
+    <p style="margin: 0; font-size: 0.88rem; line-height: 1.7;">{{ recommendation }}</p>
+  </div>
+  {% endif %}
+
   <!-- ── 2. Recency ─────────────────────────────────────────── -->
   <h2>2. Recency</h2>
   {% if 'tavily' in run.providers_tested %}

@@ -130,7 +130,17 @@ def run(
 
     if not no_html:
         from eval_search.report.generator import generate_report
-        html = generate_report(run_result, metrics)
+        from eval_search.report.recommender import generate_recommendation
+
+        recommendation = ""
+        if settings.anthropic_api_key:
+            console.print("[cyan]Generating recommendation...")
+            try:
+                recommendation = generate_recommendation(metrics, run_result, settings.anthropic_api_key)
+            except Exception as e:
+                console.print(f"[yellow]Recommendation generation failed: {e}")
+
+        html = generate_report(run_result, metrics, recommendation)
         html_path = output_dir / f"eval_{ts}.html"
         html_path.write_text(html, encoding="utf-8")
         console.print(f"[green]HTML saved:[/green]  {html_path}")

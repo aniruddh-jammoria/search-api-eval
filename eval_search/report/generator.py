@@ -36,7 +36,7 @@ def _pricing_label(endpoint_id: str) -> str:
     return base
 
 
-def generate_report(run: EvaluationRun, metrics: list[AggregatedMetrics]) -> str:
+def generate_report(run: EvaluationRun, metrics: list[AggregatedMetrics], recommendation: str = "") -> str:
     # Summary rows: aggregate metrics across topics per endpoint
     endpoint_totals: dict[str, list[AggregatedMetrics]] = defaultdict(list)
     for m in metrics:
@@ -138,4 +138,5 @@ def generate_report(run: EvaluationRun, metrics: list[AggregatedMetrics]) -> str
             {"name": "Anthropic", "model": ClaudeJudge.model_name},
             {"name": "OpenAI",    "model": OpenAIJudge.model_name},
         ],
+        recommendation=recommendation,
     )
