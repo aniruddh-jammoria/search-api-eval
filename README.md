@@ -6,16 +6,19 @@ Picking a search API for a content pipeline is harder than it looks. Different p
 
 It was built with newsletter generation in mind, but the evaluation criteria — recency, relevance, newsworthiness, and cost — apply to most content pipelines.
 
+A sample report is available in [`sample_reports/`](sample_reports/) so you can see what the output looks like before running your own eval.
+
 ## How it works
 
 ```
-Query bank → Search providers → Fetch & summarize → LLM judges → HTML report
+Query bank → Search providers → Fetch & summarize → LLM judges → HTML report + recommendation
 ```
 
 1. **Search** — the same queries are sent to every provider you select
 2. **Summarize** — each result's page content is fetched and summarized using Claude Haiku (providers that return article content natively skip this step)
 3. **Judge** — Claude Haiku and GPT-4o-mini independently score each result on relevance and newsworthiness (1–5)
 4. **Report** — a single HTML file with charts, tables, and a raw data explorer is saved to `./reports/`
+5. **Recommend** — Claude generates a plain-prose recommendation and embeds it at the top of the report
 
 ---
 
@@ -103,9 +106,11 @@ Run `eval-search providers` to see this table in your terminal at any time.
 
 ## Topics
 
-Ten topics are available out of the box:
+Eleven topics are available out of the box:
 
-`technology` · `finance` · `entertainment` · `music` · `sports` · `science` · `politics` · `investing` · `health` · `business`
+`ai` · `technology` · `finance` · `entertainment` · `music` · `sports` · `science` · `politics` · `investing` · `health` · `business`
+
+The `ai` topic is purpose-built for AI newsletter use cases, with queries covering foundation model releases, big lab product updates, hardware, LLM research, agentic AI, open source models, safety/policy, and infrastructure.
 
 ---
 
@@ -171,6 +176,7 @@ The output is a single self-contained HTML file — no server needed, just open 
 
 | Section | What you'll find |
 |---|---|
+| **Recommendation** | AI-generated plain-prose recommendation directly below the summary table |
 | **Executive Summary** | Relevance, newsworthiness, product cost, and latency per endpoint at a glance |
 | **Recency** | How fresh the results are — freshness distribution and age box plot |
 | **Relevance & Newsworthiness** | Score heatmaps per judge, inter-judge agreement scatter, and Pearson r |
@@ -219,6 +225,7 @@ eval-search is designed to be adapted. Here's where to make changes:
 | Search queries | [`queries.md`](queries.md) |
 | Topics available | `TopicCategory` enum in [`eval_search/models.py`](eval_search/models.py) |
 | Relevance / newsworthiness rubric | [`eval_search/judges/prompts.py`](eval_search/judges/prompts.py) |
+| Recommendation prompt and focus | [`eval_search/report/recommendation_prompt.md`](eval_search/report/recommendation_prompt.md) |
 | Which providers run by default | `--providers` flag or update defaults in [`eval_search/cli.py`](eval_search/cli.py) |
 | Lookback window, result count, concurrency | `--lookback-days`, `--max-results`, or set defaults in `.env` |
 | Report appearance | [`eval_search/report/templates/report.html.j2`](eval_search/report/templates/report.html.j2) |
